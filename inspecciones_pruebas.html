@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Inspección Vehicular</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body{
+  font-family: Arial;
+  background:#f4f6f9;
+  margin:0;
+  padding:15px;
+}
+.container{
+  max-width:800px;
+  margin:auto;
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+h2{ text-align:center; }
+input, select, textarea{
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+}
+button{
+  padding:10px;
+  width:100%;
+  background:#0d6efd;
+  color:white;
+  border:none;
+  margin-top:10px;
+}
+.section{
+  margin-top:20px;
+  border-top:1px solid #ccc;
+  padding-top:10px;
+}
+.hidden{ display:none; }
+.flex-row{
+  display:flex; gap:10px; flex-wrap:wrap;
+}
+.flex-column{
+  display:flex; flex-direction:column; flex:1;
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="loginBox">
+<h2>Login Inspector</h2>
+<input type="text" id="user" placeholder="Usuario">
+<input type="password" id="pass" placeholder="Contraseña">
+<button onclick="login()">Ingresar</button>
+</div>
+
+<div class="container hidden" id="app">
+<h2>Inspección Vehicular</h2>
+
+<div class="section">
+<h3>Datos del Vehículo</h3>
+<div class="flex-row">
+  <div class="flex-column">
+    <label>Placa</label><input type="text" id="placa">
+    <label>Fecha Inspección</label><input type="date" id="fecha">
+    <label>Clase (Silueta)</label>
+    <select id="clase">
+      <option>Sedán</option><option>SUV</option><option>Hatchback</option>
+      <option>Pickup</option><option>Van</option><option>Coupe</option><option>Moto</option>
+    </select>
+    <label>Marca</label><input type="text" id="marca">
+    <label>Línea / Tipo</label><input type="text" id="linea">
+  </div>
+  <div class="flex-column">
+    <label>Modelo</label><input type="text" id="modelo">
+    <label>Tipo de Caja</label>
+    <select id="caja">
+      <option>Automática</option>
+      <option>Mecánica</option>
+    </select>
+    <label>Cilindraje</label><input type="text" id="cilindraje">
+    <label>Tipo de Combustible</label>
+    <select id="combustible">
+      <option>Gasolina</option>
+      <option>Diésel</option>
+      <option>Gas Natural</option>
+      <option>Eléctrico</option>
+    </select>
+    <label>Kilometraje</label><input type="text" id="kilometraje">
+    <label>Número de Chasis</label><input type="text" id="chasis">
+    <label>Número de Motor</label><input type="text" id="motor">
+  </div>
+</div>
+</div>
+
+<div class="section"><h3>Carrocería</h3><div id="carroceria"></div></div>
+<div class="section"><h3>Estructura</h3><div id="estructura"></div></div>
+<div class="section"><h3>Fugas</h3><div id="mecanica"></div></div>
+<div class="section"><h3>Llantas (%)</h3><div id="llantas"></div></div>
+
+<div class="section">
+<h3>Fotografías</h3>
+<label>Licencia tránsito cara 1</label><input type="file">
+<label>Licencia tránsito cara 2</label><input type="file">
+<label>Foto delantera derecha</label><input type="file">
+<label>Foto trasera izquierda</label><input type="file">
+<label>Foto frontal</label><input type="file">
+<label>Foto trasera</label><input type="file">
+<label>Tacómetro apagado</label><input type="file">
+<label>Tacómetro encendido</label><input type="file">
+<label>Fotos daños</label><input type="file" multiple>
+</div>
+
+<div class="section">
+<h3>Observaciones</h3>
+<textarea id="observaciones" placeholder="Escriba aquí cualquier observación..."></textarea>
+</div>
+
+<button onclick="generarPDF()">Generar Informe PDF</button>
+</div>
+
+<script>
+function login(){
+  let u=document.getElementById("user").value;
+  let p=document.getElementById("pass").value;
+  if(u==="inspector" && p==="1234"){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+  } else { alert("Usuario o contraseña incorrectos"); }
+}
+
+let respuestas={"Bueno":100,"Buena reparación":85,"Rayón":80,"Mala reparación":50,"Deformación media":40,"Deformación fuerte":10};
+let piezasCarroceria=["Bumper delantero","Bumper trasero","Capó","Capota","Costado derecho","Costado izquierdo","Farola derecha","Farola izquierda","Frontal superior","Guardafango delantero derecho","Guardafango delantero izquierdo","Panorámico trasero","Panorámico delantero","Piso baúl","Piso carrocería","Puerta delantera izquierda","Puerta delantera derecha","Refuerzos piso derecho","Refuerzos piso izquierdo","Retrovisor derecho","Retrovisor izquierdo","Stop derecho","Stop izquierdo","Tapa baúl"];
+let piezasEstructura=["Estribo derecho","Estribo izquierdo","Punta chasis delantera derecha","Punta chasis delantera izquierda","Punta chasis trasera derecha","Punta chasis trasera izquierda","Guardapolvo metálico delantero derecho","Guardapolvo metálico delantero izquierdo","Guardapolvo metálico trasero derecho","Guardapolvo metálico trasero izquierdo","Larguero capota derecho","Larguero capota izquierdo","Cuna motor","Parabrisas derecho","Parabrisas izquierdo","Marco puerta derecho","Marco puerta izquierdo","Torpedo","Traviesa inferior"];
+let piezasMecanica=["Fuga aceite caja","Fuga aceite motor","Fuga hidráulico dirección","Fuga líquido frenos","Fuga refrigerante"];
+let piezasLlantas=["Llanta delantera derecha","Llanta delantera izquierda","Llanta trasera derecha","Llanta trasera izquierda"];
+
+function crearSelect(nombre){
+  let html="<label>"+nombre+"</label><select>";
+  for(let r in respuestas){ html+="<option>"+r+"</option>"; }
+  html+="</select>"; return html;
+}
+
+piezasCarroceria.forEach(p=>document.getElementById("carroceria").innerHTML+=crearSelect(p));
+piezasEstructura.forEach(p=>document.getElementById("estructura").innerHTML+=crearSelect(p));
+piezasMecanica.forEach(p=>document.getElementById("mecanica").innerHTML+=
+  "<label>"+p+"</label><select><option>No</option><option>Si</option><option>Humedad</option></select>");
+piezasLlantas.forEach(p=>document.getElementById("llantas").innerHTML+=
+  "<label>"+p+"</label><select><option>100</option><option>90</option><option>80</option><option>70</option><option>60</option><option>50</option><option>40</option><option>30</option><option>20</option><option>10</option><option>5</option></select>");
+
+function generarPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y=20;
+
+  let placa=document.getElementById("placa").value;
+  let fecha=document.getElementById("fecha").value;
+  let clase=document.getElementById("clase").value;
+  let marca=document.getElementById("marca").value;
+  let linea=document.getElementById("linea").value;
+  let modelo=document.getElementById("modelo").value;
+  let caja=document.getElementById("caja").value;
+  let cilindraje=document.getElementById("cilindraje").value;
+  let combustible=document.getElementById("combustible").value;
+  let kilometraje=document.getElementById("kilometraje").value;
+  let chasis=document.getElementById("chasis").value;
+  let motor=document.getElementById("motor").value;
+  let observaciones=document.getElementById("observaciones").value;
+
+  // --- PRIMERA HOJA: DATOS VEHÍCULO ---
+  doc.setFont("times","bold"); doc.setFontSize(14); doc.text("MILANCARSSOLUTIONS",20,y); y+=10;
+  doc.setFontSize(12); doc.text("Informe Inspección Vehicular",20,y); y+=10;
+
+  let cuadroX=15, cuadroY=y, cuadroW=180, cuadroH=100;
+  doc.rect(cuadroX, cuadroY, cuadroW, cuadroH);
+
+  let columnas=[cuadroX, cuadroX+90];
+  let filas=[cuadroY, cuadroY+16, cuadroY+32, cuadroY+48, cuadroY+64, cuadroY+80];
+  for(let i=1;i<filas.length;i++) doc.line(cuadroX, filas[i], cuadroX+cuadroW, filas[i]);
+  doc.line(columnas[1], cuadroY, columnas[1], cuadroY+cuadroH);
+
+  doc.setFont("times","normal"); doc.setFontSize(11);
+
+  doc.text("Placa: "+placa, columnas[0]+2, filas[0]+10);
+  doc.text("Fecha: "+fecha, columnas[0]+2, filas[1]+10);
+  doc.text("Clase: "+clase, columnas[0]+2, filas[2]+10);
+  doc.text("Marca: "+marca, columnas[0]+2, filas[3]+10);
+  doc.text("Línea: "+linea, columnas[0]+2, filas[4]+10);
+  doc.text("Chasis: "+chasis, columnas[0]+2, filas[5]+10);
+
+  doc.text("Modelo: "+modelo, columnas[1]+2, filas[0]+10);
+  doc.text("Caja: "+caja, columnas[1]+2, filas[1]+10);
+  doc.text("Cilindraje: "+cilindraje, columnas[1]+2, filas[2]+10);
+  doc.text("Combustible: "+combustible, columnas[1]+2, filas[3]+10);
+  doc.text("Kilometraje: "+kilometraje, columnas[1]+2, filas[4]+10);
+  doc.text("Motor: "+motor, columnas[1]+2, filas[5]+10);
+
+  // --- SECCIONES CON CUADRO Y FILAS DIVIDIDAS ---
+  function agregarSeccion(titulo, piezas, divId){
+    doc.addPage(); 
+    y = 20;
+    doc.setFont("times","bold"); 
+    doc.setFontSize(12); 
+    doc.text(titulo, 20, y); 
+    y += 8;
+
+    doc.setFont("times","normal"); 
+    doc.setFontSize(11);
+
+    let selects = document.querySelectorAll("#"+divId+" select");
+    let cuadroX = 15; 
+    let cuadroW = 180;
+    let filaAltura = 10;
+    let margen = 5;
+
+    // Filtrar solo piezas visibles
+    let piezasVisibles = [];
+    for(let i=0;i<piezas.length;i++){
+      if(divId!=="mecanica" && divId!=="llantas" && selects[i].value!=="Bueno") piezasVisibles.push(i);
+      if(divId==="mecanica" && selects[i].value!=="No") piezasVisibles.push(i);
+      if(divId==="llantas") piezasVisibles.push(i);
+    }
+
+    let cuadroH = piezasVisibles.length * filaAltura + margen*2;
+    doc.rect(cuadroX, y, cuadroW, cuadroH); // dibujar cuadro
+    let filaY = y + margen + filaAltura/2;
+
+    piezasVisibles.forEach((i)=>{
+      let piezaTexto = piezas[i];
+      let valorTexto = selects[i].value;
+      if(divId==="llantas") valorTexto += "%";
+
+      // Línea divisoria horizontal
+      doc.line(cuadroX, filaY + filaAltura/2, cuadroX + cuadroW, filaY + filaAltura/2);
+
+      // Texto dividido en dos columnas
+      doc.text(piezaTexto, cuadroX + 2, filaY);
+      doc.text(valorTexto, cuadroX + cuadroW - 20, filaY, {align: "right"});
+
+      filaY += filaAltura;
+    });
+  }
+
+  agregarSeccion("CARROCERÍA", piezasCarroceria, "carroceria");
+  agregarSeccion("ESTRUCTURA", piezasEstructura, "estructura");
+  agregarSeccion("FUGAS / MECÁNICA", piezasMecanica, "mecanica");
+  agregarSeccion("PORCENTAJE LLANTAS", piezasLlantas, "llantas");
+
+  // --- OBSERVACIONES ---
+  doc.addPage(); 
+  y=20;
+  doc.setFont("times","bold"); doc.setFontSize(12); doc.text("Observaciones:",20,y); y+=8;
+  doc.setDrawColor(0); doc.setLineWidth(0.5); doc.rect(15,y,180,60);
+  if(observaciones) doc.setFont("times","normal"); doc.text(observaciones,20,y+10);
+
+  doc.save("Informe_"+placa+".pdf");
+}
+</script>
+</body>
+</html>
